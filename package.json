@@ -1,0 +1,19 @@
+{
+    "name": "weather_server",
+    "version": "1.0.0",
+    "description": "Simple node server that serves some parsed data from the NOAA weather JSON API.",
+    "main": "dist/server.js",
+    "scripts": {
+        "start": "tsc && node dist/server.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Jess VanDerwalker",
+    "license": "MIT",
+    "devDependencies": {
+        "eslint": "^7.13.0",
+        "typescript": "^4.0.5"
+    },
+    "dependencies": {
+        "express": "^4.17.1"
+    }
+}
