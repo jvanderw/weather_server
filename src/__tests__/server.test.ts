@@ -86,25 +86,32 @@ describe('Express server', () => {
     });
 
     it('should return error for invalid stationId', async () => {
-        const mockError = new Error('Network error');
+        const mockError = new WeatherRequestError('stationId is required', 400);
         mockGetResponse(mockError, true);
 
         const response = await request(app).get('/station123');
 
-        expect(response.status).toBe(500);
-        expect(response.text).toBe(mockError.message);
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({ error: mockError.message });
     });
 
     it('should return NOAA status code for upstream errors', async () => {
         const upstreamError = new WeatherRequestError(
             'NOAA request failed with status 404',
-            404
+            502
         );
         mockGetResponse(upstreamError, true);
 
         const response = await request(app).get('/station123');
 
-        expect(response.status).toBe(404);
-        expect(response.text).toBe(upstreamError.message);
+        expect(response.status).toBe(502);
+        expect(response.body).toEqual({ error: upstreamError.message });
+    });
+
+    it('should return healthy status from health endpoint', async () => {
+        const response = await request(app).get('/health');
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ status: 'ok' });
     });
 });

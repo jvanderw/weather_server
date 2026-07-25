@@ -38,7 +38,12 @@ describe('WeatherRequestHandler', () => {
 
         expect(mockedNeedle).toHaveBeenCalledWith(
             'get',
-            'https://api.weather.gov/stations/KPDX/observations/latest'
+            'https://api.weather.gov/stations/KPDX/observations/latest',
+            {
+                open_timeout: 5000,
+                read_timeout: 8000,
+                response_timeout: 8000
+            }
         );
         expect(response).toEqual({
             temperature: 20,
@@ -97,7 +102,7 @@ describe('WeatherRequestHandler', () => {
         await expect(wrh.getResponse()).rejects.toBeInstanceOf(WeatherRequestError);
         await expect(wrh.getResponse()).rejects.toMatchObject({
             message: 'NOAA request failed with status 404',
-            statusCode: 404
+            statusCode: 502
         });
     });
 

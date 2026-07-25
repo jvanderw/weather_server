@@ -13,19 +13,23 @@ import {
 export function createApp(): express.Application {
     const app = express();
 
+    app.get('/health', (_req, res) => {
+        res.status(200).json({ status: 'ok' });
+    });
+
     app.get('/:stationId', async (req, res) => {
         const wrh: WeatherRequestHandler =
             new WeatherRequestHandler(req.params.stationId, 0, 0, false);
         try {
             const parsedRes = await wrh.getResponse();
-            res.send(parsedRes);
+            res.status(200).json(parsedRes);
         } catch (err: unknown) {
             if (err instanceof WeatherRequestError) {
-                res.status(err.statusCode).send(err.message);
+                res.status(err.statusCode).json({ error: err.message });
                 return;
             }
             const message = err instanceof Error ? err.message : 'Unknown error';
-            res.status(500).send(message);
+            res.status(500).json({ error: message });
         }
     });
 

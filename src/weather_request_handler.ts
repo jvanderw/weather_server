@@ -18,11 +18,13 @@ export interface WeatherResponse {
 
 export class WeatherRequestError extends Error {
     statusCode: number;
+    code: string;
 
-    constructor(message: string, statusCode: number) {
+    constructor(message: string, statusCode: number, code = 'WEATHER_REQUEST_ERROR') {
         super(message);
         this.name = 'WeatherRequestError';
         this.statusCode = statusCode;
+        this.code = code;
     }
 }
 
@@ -57,32 +59,46 @@ export class WeatherRequestHandler {
      */
     getResponse(): Promise<WeatherResponse> {
         if (!this.stationId) {
-            return Promise.reject(new WeatherRequestError('stationId is required', 400));
+            return Promise.reject(
+                new WeatherRequestError('stationId is required', 400, 'INVALID_STATION')
+            );
         }
         const url = `https://api.weather.gov/stations/${this.stationId}/observations/latest`;
-        return needle('get', url)
+        return needle('get', url, {
+            open_timeout: 5000,
+            read_timeout: 8000,
+            response_timeout: 8000
+        })
             .then((resp) => {
                 const statusCode = typeof resp.statusCode === 'number' ? resp.statusCode : 500;
                 if (statusCode >= 400) {
                     throw new WeatherRequestError(
                         `NOAA request failed with status ${statusCode}`,
-                        statusCode
+                        502,
+                        'NOAA_UPSTREAM_ERROR'
                     );
                 }
                 try {
                     return this._parseResponse(resp.body);
                 } catch (err: unknown) {
                     const message = err instanceof Error ? err.message : 'Invalid weather response';
-                    throw new WeatherRequestError(message, 502);
+                    throw new WeatherRequestError(message, 502, 'NOAA_INVALID_RESPONSE');
                 }
             })
             .catch((err: unknown) => {
                 if (err instanceof WeatherRequestError) {
                     throw err;
                 }
-                const message =
-                    err instanceof Error ? err.message : 'Unknown NOAA request error';
-                throw new WeatherRequestError(`NOAA request failed: ${message}`, 502);
+                const message = err instanceof Error ? err.message : 'Unknown NOAA request error';
+                const isTimeout =
+                    (err instanceof Error && /timeout/i.test(err.message)) ||
+                    (typeof err === 'object' && err !== null &&
+                        'code' in err && (err as { code?: string }).code === 'ECONNRESET');
+                throw new WeatherRequestError(
+                    `NOAA request failed: ${message}`,
+                    isTimeout ? 504 : 502,
+                    isTimeout ? 'NOAA_TIMEOUT' : 'NOAA_NETWORK_ERROR'
+                );
             });
     }
 
