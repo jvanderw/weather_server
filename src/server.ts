@@ -1,26 +1,59 @@
 /**
- * Copyright (c) 2020 Jess VanDerwalker
+ * Copyright (c) 2020-2024 Jess VanDerwalker
  */
 
 import express from 'express';
-import { WeatherRequestHandler, WeatherResponse } from './weather_request_handler.js';
+import { Server } from 'http';
+import {
+    WeatherRequestError,
+    WeatherRequestHandler,
+    WeatherResponse
+} from './weather_request_handler';
 
-const app = express();
-const port = 3030;
+export function createApp(): express.Application {
+    const app = express();
 
-app.get('/:stationId', (req, res) => {
-    // res.send('This is the web server');
-    const wrh: WeatherRequestHandler =
-        new WeatherRequestHandler(req.params.stationId, 0, 0, false);
-    wrh.getResponse()
-        .then((parsedRes) => {
+    app.get('/:stationId', async (req, res) => {
+        const wrh: WeatherRequestHandler =
+            new WeatherRequestHandler(req.params.stationId, 0, 0, false);
+        try {
+            const parsedRes = await wrh.getResponse();
             res.send(parsedRes);
-        })
-        .catch((err) => {
-            res.send(err);
-        })
-});
+        } catch (err: unknown) {
+            if (err instanceof WeatherRequestError) {
+                res.status(err.statusCode).send(err.message);
+                return;
+            }
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            res.status(500).send(message);
+        }
+    });
 
-app.listen(port, () => {
-    console.log(`server is listening of ${port}`);
-});
+    return app;
+}
+
+export function startServer(port = 3030): Server {
+    const app = createApp();
+    return app.listen(port, () => {
+        console.log(`server is listening of ${port}`);
+    });
+}
+
+/**
+ * Calls WeatherRequestHandler.getResponse() and outputs the result to the console in a readable format.
+ * @param {string} stationId - The ID of the weather station.
+ * @returns {Promise<void>} - A promise that resolves when the response is received.
+ */
+export async function logWeatherResponse(stationId: string): Promise<void> {
+    try {
+        const wrh = new WeatherRequestHandler(stationId, 0, 0, false);
+        const response: WeatherResponse = await wrh.getResponse();
+        console.log('Weather Response:', JSON.stringify(response, null, 2));
+    } catch (error) {
+        console.error('Error fetching weather response:', error);
+    }
+}
+
+if (require.main === module) {
+    startServer();
+}
