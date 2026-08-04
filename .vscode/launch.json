@@ -5,17 +5,48 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Weather Server: Build and Debug",
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "cwd": "${workspaceFolder}",
             "skipFiles": [
                 "<node_internals>/**",
                 "${workspaceFolder}/src/__tests__/**/*.ts"
             ],
             "program": "${workspaceFolder}/dist/server.js",
-            "preLaunchTask": "tsc: build - tsconfig.json",
+            "preLaunchTask": "npm: build",
+            "console": "integratedTerminal",
             "outFiles": [
                 "${workspaceFolder}/dist/**/*.js"
+            ]
+        },
+        {
+            "name": "Weather Server: Attach (port 9229)",
+            "type": "node",
+            "request": "attach",
+            "port": 9229,
+            "restart": true,
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        },
+        {
+            "name": "Weather Server: Debug Jest Current File",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "test",
+                "--",
+                "--runInBand",
+                "--watchAll=false",
+                "${file}"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": [
+                "<node_internals>/**"
             ]
         }
     ]
