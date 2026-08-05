@@ -1,0 +1,83 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on:
+      - self-hosted
+      - linux
+      - weather-server
+    concurrency:
+      group: weather-server-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifact from CI run
+        if: github.event_name == 'workflow_run'
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: ci.yml
+          run_id: ${{ github.event.workflow_run.id }}
+          name: weather-server-artifact
+          path: ${{ github.workspace }}/deploy_artifacts
+
+      - name: Build artifact for manual run
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          npm ci
+          npm run build
+          mkdir -p "${{ github.workspace }}/deploy_artifacts"
+          tar -czf "${{ github.workspace }}/deploy_artifacts/weather_server_artifact.tar.gz" dist package.json package-lock.json
+
+      - name: Resolve deployment metadata
+        id: release_meta
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "release_id=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            artifact_path="$(find "${{ github.workspace }}/deploy_artifacts" -maxdepth 2 -name '*.tar.gz' | head -n 1)"
+          else
+            echo "release_id=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            artifact_path="${{ github.workspace }}/deploy_artifacts/weather_server_artifact.tar.gz"
+          fi
+
+          if [[ -z "${artifact_path}" || ! -f "${artifact_path}" ]]; then
+            echo "Unable to locate deployment artifact" >&2
+            exit 1
+          fi
+
+          echo "artifact_path=${artifact_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure SSH key permissions
+        run: chmod 600 /home/jessv/.ssh/id_ed25519_weather_pi
+
+      - name: Add Pi host key
+        run: |
+          mkdir -p "$HOME/.ssh"
+          ssh-keyscan -H 192.168.0.55 >> "$HOME/.ssh/known_hosts"
+
+      - name: Deploy to Raspberry Pi
+        env:
+          DEPLOY_ARTIFACT: ${{ steps.release_meta.outputs.artifact_path }}
+          PI_HOST: 192.168.0.55
+          PI_USER: weatherdeploy
+          SSH_KEY_PATH: /home/jessv/.ssh/id_ed25519_weather_pi
+          REMOTE_APP_ROOT: /srv/weather_server
+          SERVICE_NAME: weather_server.service
+          HEALTH_URL: http://192.168.0.55:3030/health
+          RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}
+        run: bash deploy/scripts/deploy_to_pi.sh

@@ -1,0 +1,24 @@
+[Unit]
+Description=Weather Server API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=weathersvc
+Group=weathersvc
+WorkingDirectory=/srv/weather_server/current
+ExecStart=/usr/bin/node dist/server.js
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/etc/weather_server/weather_server.env
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/srv/weather_server /var/log
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
