@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020-2024 Jess VanDerwalker
+ * Copyright (c) 2020-2026 Jess VanDerwalker
  */
 
 import express from 'express';
@@ -7,8 +7,7 @@ import needle from 'needle';
 import { Server } from 'http';
 import {
     WeatherRequestError,
-    WeatherRequestHandler,
-    WeatherResponse
+    WeatherRequestHandler
 } from './weather_request_handler';
 
 const NOAA_REQUEST_OPTIONS = {
@@ -199,21 +198,6 @@ function resolvePort(defaultPort = 3030): number {
     }
 
     return parsed;
-}
-
-/**
- * Calls WeatherRequestHandler.getResponse() and outputs the result to the console in a readable format.
- * @param {string} stationId - The ID of the weather station.
- * @returns {Promise<void>} - A promise that resolves when the response is received.
- */
-export async function logWeatherResponse(stationId: string): Promise<void> {
-    try {
-        const wrh = new WeatherRequestHandler(stationId, 0, 0, false);
-        const response: WeatherResponse = await wrh.getResponse();
-        console.log('Weather Response:', JSON.stringify(response, null, 2));
-    } catch (error) {
-        console.error('Error fetching weather response:', error);
-    }
 }
 
 if (require.main === module) {
