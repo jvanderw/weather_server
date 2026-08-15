@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { createApp, logWeatherResponse } from '../server';
+import { createApp, getForecastPeriods, getForecastUrl } from '../server';
 import {
     WeatherRequestError,
     WeatherRequestHandler,
@@ -22,44 +22,6 @@ function mockGetResponse(result: WeatherResponse | unknown, shouldReject = false
         getResponseSpy.mockResolvedValue(result as WeatherResponse);
     }
 }
-
-describe('logWeatherResponse', () => {
-    beforeEach(() => {
-        mockedNeedle.mockReset();
-        getResponseSpy = jest.spyOn(WeatherRequestHandler.prototype, 'getResponse');
-    });
-
-    afterEach(() => {
-        jest.restoreAllMocks();
-    });
-
-    it('should log the weather response', async () => {
-        const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
-        const mockResponse: WeatherResponse = {
-            station: 'station123',
-            temperature: 25,
-            relativeHumidity: 60,
-            textDescription: 'Sunny'
-        };
-        mockGetResponse(mockResponse);
-
-        await logWeatherResponse('station123');
-
-        expect(consoleLogSpy).toHaveBeenCalledWith('Weather Response:', JSON.stringify(mockResponse, null, 2));
-        consoleLogSpy.mockRestore();
-    });
-
-    it('should log an error if fetching weather response fails', async () => {
-        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-        const mockError = new Error('Network error');
-        mockGetResponse(mockError, true);
-
-        await logWeatherResponse('station123');
-
-        expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching weather response:', mockError);
-        consoleErrorSpy.mockRestore();
-    });
-});
 
 describe('Express server', () => {
     let app: Application;
@@ -113,6 +75,15 @@ describe('Express server', () => {
 
         expect(response.status).toBe(502);
         expect(response.body).toEqual({ error: upstreamError.message });
+    });
+
+    it('should return 500 for an unexpected station error', async () => {
+        mockGetResponse(new Error('Unexpected station failure'), true);
+
+        const response = await request(app).get('/station123');
+
+        expect(response.status).toBe(500);
+        expect(response.body).toEqual({ error: 'Unexpected station failure' });
     });
 
     it('should return first three forecast periods from NOAA forecast endpoint', async () => {
@@ -207,6 +178,70 @@ describe('Express server', () => {
 
         expect(response.status).toBe(502);
         expect(response.body).toEqual({ error: 'Invalid forecast response: missing periods' });
+    });
+
+    it('parses a JSON string points response', async () => {
+        const forecastUrl = 'https://api.weather.gov/gridpoints/PQR/110,102/forecast';
+        mockedNeedle.mockResolvedValueOnce({
+            statusCode: 200,
+            body: JSON.stringify({ properties: { forecast: forecastUrl } })
+        } as never);
+
+        await expect(getForecastUrl('45.4838,-122.68')).resolves.toBe(forecastUrl);
+    });
+
+    it('rejects an invalid points payload and upstream points status', async () => {
+        mockedNeedle.mockResolvedValueOnce({ statusCode: 200, body: [] } as never);
+        await expect(getForecastUrl('45.4838,-122.68')).rejects.toMatchObject({
+            statusCode: 502,
+            code: 'NOAA_INVALID_RESPONSE'
+        });
+
+        mockedNeedle.mockResolvedValueOnce({ statusCode: 503, body: {} } as never);
+        await expect(getForecastUrl('45.4838,-122.68')).rejects.toMatchObject({
+            statusCode: 502,
+            code: 'NOAA_UPSTREAM_ERROR'
+        });
+    });
+
+    it('reports points request timeouts as gateway timeouts', async () => {
+        mockedNeedle.mockRejectedValueOnce(new Error('request timeout'));
+
+        await expect(getForecastUrl('45.4838,-122.68')).rejects.toMatchObject({
+            statusCode: 504,
+            code: 'NOAA_TIMEOUT'
+        });
+    });
+
+    it('parses a JSON string forecast response', async () => {
+        const forecastUrl = 'https://api.weather.gov/gridpoints/PQR/110,102/forecast';
+        const periods = [{ number: 1 }, { number: 2 }];
+        mockedNeedle
+            .mockResolvedValueOnce({
+                statusCode: 200,
+                body: { properties: { forecast: forecastUrl } }
+            } as never)
+            .mockResolvedValueOnce({
+                statusCode: 200,
+                body: JSON.stringify({ properties: { periods } })
+            } as never);
+
+        await expect(getForecastPeriods('45.4838,-122.68')).resolves.toEqual(periods);
+    });
+
+    it('reports forecast request network errors', async () => {
+        const forecastUrl = 'https://api.weather.gov/gridpoints/PQR/110,102/forecast';
+        mockedNeedle
+            .mockResolvedValueOnce({
+                statusCode: 200,
+                body: { properties: { forecast: forecastUrl } }
+            } as never)
+            .mockRejectedValueOnce({ code: 'ECONNRESET' });
+
+        await expect(getForecastPeriods('45.4838,-122.68')).rejects.toMatchObject({
+            statusCode: 504,
+            code: 'NOAA_TIMEOUT'
+        });
     });
 
     it('should return 400 for invalid forecast coordinates', async () => {

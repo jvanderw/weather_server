@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020-2024 Jess VanDerwalker
+ * Copyright (c) 2020-2026 Jess VanDerwalker
  *
  * weather_request_handler.js
  */
