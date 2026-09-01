@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+e#!/usr/bin/env bash
 set -euo pipefail
 
 service_user="weathersvc"
@@ -17,6 +17,17 @@ fi
 
 if ! id -u "${deploy_user}" > /dev/null 2>&1; then
   echo "Missing deploy user: ${deploy_user}" >&2
+  exit 1
+fi
+
+if ! command -v node > /dev/null 2>&1 || ! command -v npm > /dev/null 2>&1; then
+  echo "Node.js 20+ and npm must be installed before running this script." >&2
+  exit 1
+fi
+
+node_major="$(node --version | sed -E 's/^v([0-9]+).*/\1/')"
+if [[ ! "${node_major}" =~ ^[0-9]+$ || "${node_major}" -lt 20 ]]; then
+  echo "Node.js 20+ is required; found $(node --version)." >&2
   exit 1
 fi
 
