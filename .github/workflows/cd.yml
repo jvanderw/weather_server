@@ -62,9 +62,6 @@ jobs:
 
           echo "artifact_path=${artifact_path}" >> "$GITHUB_OUTPUT"
 
-      - name: Ensure SSH key permissions
-        run: chmod 600 $HOME/.ssh/id_ed25519_weather_pi
-
       - name: Add Pi host key
         run: |
           mkdir -p "$HOME/.ssh"
@@ -75,7 +72,7 @@ jobs:
           DEPLOY_ARTIFACT: ${{ steps.release_meta.outputs.artifact_path }}
           PI_HOST: 192.168.0.55
           PI_USER: weatherdeploy
-          SSH_KEY_PATH: $HOME/.ssh/id_ed25519_weather_pi
+          SSH_KEY_PATH: /home/jessv/.ssh/id_ed25519_weather_pi
           REMOTE_APP_ROOT: /srv/weather_server
           SERVICE_NAME: weather_server.service
           HEALTH_URL: http://192.168.0.55:4950/health
