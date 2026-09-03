@@ -75,7 +75,18 @@ ln -sfn "${release_dir}" "${current_link}"
 sudo systemctl daemon-reload
 sudo systemctl restart "${service_name}"
 
-if ! curl -fsS "${health_url}" > /dev/null; then
+echo "Verifying service health at ${health_url}"
+healthy=0
+for attempt in {1..15}; do
+  if curl -fsS --max-time 2 "${health_url}" > /dev/null 2>&1; then
+    healthy=1
+    break
+  fi
+  echo "Waiting for service to become healthy (attempt ${attempt}/15)..."
+  sleep 1
+done
+
+if [[ "${healthy}" -ne 1 ]]; then
   echo "Health check failed after deploy" >&2
   if [[ -n "${previous_target}" ]]; then
     echo "Rolling back to previous release: ${previous_target}" >&2
