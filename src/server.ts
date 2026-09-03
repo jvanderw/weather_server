@@ -179,14 +179,14 @@ export function createApp(): express.Application {
     return app;
 }
 
-export function startServer(port = 3030): Server {
+export function startServer(port = 4950): Server {
     const app = createApp();
     return app.listen(port, () => {
         console.log(`server is listening of ${port}`);
     });
 }
 
-function resolvePort(defaultPort = 3030): number {
+function resolvePort(defaultPort = 4950): number {
     const rawPort = process.env.PORT;
     if (!rawPort) {
         return defaultPort;

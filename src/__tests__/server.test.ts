@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { createApp, getForecastPeriods, getForecastUrl } from '../server';
+import { createApp, getForecastPeriods, getForecastUrl, startServer } from '../server';
 import {
     WeatherRequestError,
     WeatherRequestHandler,
@@ -258,5 +258,18 @@ describe('Express server', () => {
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual({ status: 'ok' });
+    });
+
+    it('starts server listening on default port 4950', (done) => {
+        const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+        const server = startServer();
+        const address = server.address();
+        if (address && typeof address === 'object') {
+            expect(address.port).toBe(4950);
+        }
+        server.close(() => {
+            consoleSpy.mockRestore();
+            done();
+        });
     });
 });

@@ -19,7 +19,7 @@ npm install
 npm start
 ```
 
-`npm start` compiles the TypeScript sources and starts the server. It listens on port `3030` by default. Set `PORT` to a whole number from `1` to `65535` to use another port:
+`npm start` compiles the TypeScript sources and starts the server. It listens on port `4950` by default. Set `PORT` to a whole number from `1` to `65535` to use another port:
 
 ```sh
 PORT=8080 npm start
@@ -54,7 +54,7 @@ All responses are JSON. Requests to NOAA use a 5-second connection timeout and 8
 Example:
 
 ```sh
-curl http://localhost:3030/KPDX
+curl http://localhost:4950/KPDX
 ```
 
 ```json
@@ -75,7 +75,7 @@ curl http://localhost:3030/KPDX
 Coordinates must be decimal latitude and longitude values separated by a comma. The endpoint resolves NOAA's points endpoint, retrieves its forecast URL, and returns at most the first three forecast periods.
 
 ```sh
-curl http://localhost:3030/forecast/45.4838,-122.68
+curl http://localhost:4950/forecast/45.4838,-122.68
 ```
 
 ```json
@@ -111,15 +111,15 @@ Run the API on a host reachable from the MatrixPortal device, then configure the
 
 ```python
 "server_host": "192.168.0.44",
-"server_port": 3030,
+"server_port": 4950,
 ```
 
 Verify connectivity from another device on the same LAN before syncing the station:
 
 ```sh
-curl http://<server-host>:3030/health
-curl http://<server-host>:3030/<station-id>
-curl http://<server-host>:3030/forecast/<latitude>,<longitude>
+curl http://<server-host>:4950/health
+curl http://<server-host>:4950/<station-id>
+curl http://<server-host>:4950/forecast/<latitude>,<longitude>
 ```
 
 The service is unauthenticated and intended for trusted local networks.
@@ -130,7 +130,7 @@ The Jest suite covers the Express endpoints and NOAA response/error handling. Gi
 
 ## Raspberry Pi deployment
 
-The deployment workflow targets a self-hosted GitHub Actions runner with the labels `self-hosted`, `linux`, and `weather-server`. It deploys to `weatherdeploy@192.168.0.55`, installs releases under `/srv/weather_server`, and restarts `weather_server.service` after validating `http://192.168.0.55:3030/health`.
+The deployment workflow targets a self-hosted GitHub Actions runner with the labels `self-hosted`, `linux`, and `weather-server`. It deploys to `weatherdeploy@192.168.0.55`, installs releases under `/srv/weather_server`, and restarts `weather_server.service` after validating `http://192.168.0.55:4950/health`.
 
 ### Initial Pi setup
 
@@ -145,7 +145,7 @@ The script creates the service account and deployment directories, installs the 
 Set the runtime configuration in `/etc/weather_server/weather_server.env`:
 
 ```ini
-PORT=3030
+PORT=4950
 NODE_ENV=production
 ```
 
@@ -199,7 +199,7 @@ Development style run:
 
 npm start
 
-This compiles TypeScript and starts the server on port 3030.
+This compiles TypeScript and starts the server on port 4950.
 
 ## API
 
@@ -274,7 +274,7 @@ From this folder:
 
 npm start
 
-That command compiles the TypeScript sources and starts the API on port 3030.
+That command compiles the TypeScript sources and starts the API on port 4950.
 
 Expected runtime endpoints:
 
@@ -283,21 +283,21 @@ Expected runtime endpoints:
 
 Example local check:
 
-curl http://localhost:3030/health
-curl http://localhost:3030/KPDX
+curl http://localhost:4950/health
+curl http://localhost:4950/KPDX
 
 ## Local network integration with weather_station
 
 - Keep this server running on a host reachable from the Matrix Portal M4 board.
 - Use that host IP as server_host in weather_station secrets.
-- Keep server_port set to 3030 unless you change this service.
+- Keep server_port set to 4950 unless you change this service.
 
 ## Manual smoke checks
 
 From a machine on the same LAN:
 
-curl http://<server_host>:3030/health
-curl http://<server_host>:3030/<station_id>
+curl http://<server_host>:4950/health
+curl http://<server_host>:4950/<station_id>
 
 ## Notes
 
@@ -320,7 +320,7 @@ This repository includes GitHub Actions CI/CD for Raspberry Pi deployment with a
 - Pi SSH target: `weatherdeploy@192.168.0.55`
 - Pi app root: `/srv/weather_server`
 - Service name: `weather_server.service`
-- Health URL: `http://192.168.0.55:3030/health`
+- Health URL: `http://192.168.0.55:4950/health`
 
 ### Option A secrets/config (selected)
 
